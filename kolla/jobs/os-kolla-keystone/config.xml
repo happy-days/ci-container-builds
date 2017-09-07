@@ -1,0 +1,165 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.13">
+  <actions>
+    <io.jenkins.blueocean.service.embedded.BlueOceanUrlAction plugin="blueocean-rest-impl@1.1.7">
+      <blueOceanUrlObject class="io.jenkins.blueocean.service.embedded.BlueOceanUrlObjectImpl">
+        <mappedUrl>blue/organizations/jenkins/os-kolla-keystone</mappedUrl>
+      </blueOceanUrlObject>
+    </io.jenkins.blueocean.service.embedded.BlueOceanUrlAction>
+  </actions>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty plugin="gitlab-plugin@1.4.7">
+      <gitLabConnection></gitLabConnection>
+    </com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>KOLLA_BASE</name>
+          <description></description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>ubuntu</string>
+              <string>centos</string>
+              <string>oraclelinux</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_TYPE</name>
+          <description></description>
+          <defaultValue>source</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_TAG</name>
+          <description></description>
+          <defaultValue>3.0.2-b747</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>REPO_BASE</name>
+          <description></description>
+          <defaultValue>https://github.com/openstack</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_PROJECT</name>
+          <description></description>
+          <defaultValue>keystone</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PROJECT_GIT_COMMIT</name>
+          <description></description>
+          <defaultValue>bd49c3ef6daa474e9c84c0d8721c0f6812ee3d2c</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PROJECT_REFERENCE</name>
+          <description></description>
+          <defaultValue>stable/newton</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>RELEASE</name>
+          <description></description>
+          <defaultValue>stable-newton</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_NAMESPACE</name>
+          <description></description>
+          <defaultValue>charter-os</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_VERSION</name>
+          <description></description>
+          <defaultValue>3.0.2</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DOCKER_USER</name>
+          <description></description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>DOCKER_PASS</name>
+          <description></description>
+          <defaultValue>{AQAAABAAAAAQESZ/X2c7B/5ZkfQUf8IkMDKvfeYoW/AkVzHpOKuUDDw=}</defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DOCKER_REGISTRY</name>
+          <description></description>
+          <defaultValue>quay.io</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_BUILD_IMAGE</name>
+          <description></description>
+          <defaultValue>quay.io/charter-os/kolla-build</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_BUILD_IMAGE_VERSION</name>
+          <description></description>
+          <defaultValue>v0.1.3</defaultValue>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.36.1">
+    <script>node (&quot;kolla_test&quot;) {
+   step([$class: &apos;WsCleanup&apos;])
+   stage(&apos;Prepare&apos;) { // prepare for docker container run
+      def CODE_DIRECTORY = &apos;/tmp/kolla/src/${KOLLA_PROJECT}&apos;
+      sh &quot;rm -rf /tmp/kolla/src/${KOLLA_PROJECT} || true&quot;
+      // Get ${KOLLA_PROJECT} code from a GitHub repository
+      git sha1: &apos;$PROJECT_GIT_COMMIT&apos;, url: &apos;$REPO_BASE/${KOLLA_PROJECT}.git&apos;
+      // Check if the ${KOLLA_PROJECT} directory in tmp and then copy the files there
+      sh (&apos;ls $CODE_DIRECTORY&apos;) 
+      sh &quot;mkdir -p /tmp/kolla/src/${KOLLA_PROJECT}&quot;
+      sh &quot;ls $CODE_DIRECTORY&quot;
+      sh &quot;cp -r * $CODE_DIRECTORY&quot;
+      sh &quot;cp -r .g* $CODE_DIRECTORY&quot;
+      sh &quot;ls $CODE_DIRECTORY&quot;
+      sh &quot;rm -r ${WORKSPACE}/*&quot;
+      sh &quot;ls&quot;
+      sh &apos;&apos;&apos;cat &lt;&lt;EOF &gt; /tmp/kolla-build.conf 
+[DEFAULT]
+base=$KOLLA_BASE
+install_type=$KOLLA_TYPE
+threads=1
+namespace=&apos;$DOCKER_REGISTRY/$KOLLA_NAMESPACE&apos;
+tag=$KOLLA_TAG
+[${KOLLA_PROJECT}-base]
+type = local
+location = /tmp/kolla/src/${KOLLA_PROJECT}
+&apos;&apos;&apos;
+      echo &quot;print the file&quot;
+      sh &quot;cat /tmp/kolla-build.conf&quot;
+      sh &quot;sudo /usr/bin/docker rm -f kolla-build-${KOLLA_PROJECT} || true&quot;
+   }
+   stage(&apos;Build&apos;) {
+        git branch: &apos;master&apos;, url: &apos;https://github.com/charter-ctec/dockerfiles.git&apos;
+       sh &apos;&apos;&apos;cd kolla-builder
+sudo /usr/bin/docker run -t --privileged \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --name kolla-build-${KOLLA_PROJECT} \
+  -v /tmp/kolla-build.conf:/etc/kolla/kolla-build.conf \
+  -v /tmp/kolla/src/${KOLLA_PROJECT}:/tmp/kolla/src/${KOLLA_PROJECT} \
+  -e KOLLA_BASE=${KOLLA_BASE} \
+  -e KOLLA_TYPE=${KOLLA_TYPE} \
+  -e KOLLA_TAG=${KOLLA_TAG} \
+  -e KOLLA_PROJECT=${KOLLA_PROJECT} \
+  -e KOLLA_NAMESPACE=${KOLLA_NAMESPACE} \
+  -e KOLLA_VERSION=${KOLLA_VERSION} \
+  -e DOCKER_USER=${DOCKER_USER} \
+  -e DOCKER_PASS=${DOCKER_PASS} \
+  -e DOCKER_REGISTRY=${DOCKER_REGISTRY} \
+${KOLLA_BUILD_IMAGE}:${KOLLA_BUILD_IMAGE_VERSION}&apos;&apos;&apos;
+   }
+   stage(&apos;Clean&apos;) {
+      //build job: &apos;Test Pull Trigger&apos;, parameters: [[$class: &apos;StringParameterValue&apos;, name: &apos;sha1&apos;, value: sha1],[$class: &apos;PasswordParameterValue&apos;, name: &apos;mypass&apos;, value: DOCKER_PASS]]
+      sh &quot;sudo docker rm -f kolla-build-${KOLLA_PROJECT}&quot;
+   }
+} </script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
