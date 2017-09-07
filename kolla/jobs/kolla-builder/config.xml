@@ -1,0 +1,134 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.13">
+  <actions>
+    <io.jenkins.blueocean.service.embedded.BlueOceanUrlAction plugin="blueocean-rest-impl@1.1.7">
+      <blueOceanUrlObject class="io.jenkins.blueocean.service.embedded.BlueOceanUrlObjectImpl">
+        <mappedUrl>blue/organizations/jenkins/kolla-builder</mappedUrl>
+      </blueOceanUrlObject>
+    </io.jenkins.blueocean.service.embedded.BlueOceanUrlAction>
+  </actions>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty plugin="gitlab-plugin@1.4.7">
+      <gitLabConnection></gitLabConnection>
+    </com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>KOLLA_PROJECT</name>
+          <description></description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>keystone</string>
+              <string>heat</string>
+              <string>glance</string>
+              <string>neutron</string>
+              <string>cinder</string>
+              <string>nova</string>
+              <string>horizon</string>
+              <string>mistral</string>
+              <string>senlin</string>
+              <string>magnum</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>KOLLA_BASE</name>
+          <description></description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>ubuntu</string>
+              <string>centos</string>
+              <string>oraclelinux</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>KOLLA_TYPE</name>
+          <description></description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>source</string>
+              <string>binary</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_TAG</name>
+          <description></description>
+          <defaultValue>3.0.2</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>REPO_BASE</name>
+          <description></description>
+          <defaultValue>https://github.com/openstack</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PROJECT_GIT_COMMIT</name>
+          <description></description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PROJECT_REFERENCE</name>
+          <description></description>
+          <defaultValue>stable/newton</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>RELEASE</name>
+          <description></description>
+          <defaultValue>stable-newton</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_NAMESPACE</name>
+          <description></description>
+          <defaultValue>charter-os</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_VERSION</name>
+          <description></description>
+          <defaultValue>3.0.2</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DOCKER_USER</name>
+          <description></description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>DOCKER_PASS</name>
+          <description></description>
+          <defaultValue>{AQAAABAAAAAQuM+3oCdmMWY3y2cOX4lOXSFNu0HSU7Sdcm42G1i2Q2Q=}</defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DOCKER_REGISTRY</name>
+          <description></description>
+          <defaultValue>quay.io</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_BUILD_IMAGE</name>
+          <description></description>
+          <defaultValue>quay.io/charter-os/kolla-build</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KOLLA_BUILD_IMAGE_VERSION</name>
+          <description></description>
+          <defaultValue>v0.1.3</defaultValue>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.36.1">
+    <script>stage(&quot;Launch ${KOLLA_PROJECT} Pipeline&quot;){
+    projectValue = &quot;os-kolla-${KOLLA_PROJECT}&quot;
+    echo &quot;Building a ${projectValue} image for the Openstack Release ${RELEASE}&quot;
+    build job: projectValue, parameters: [string(name: &apos;KOLLA_PROJECT&apos;, value: &quot;${KOLLA_PROJECT}&quot;), string(name: &apos;KOLLA_BASE&apos;, value: &quot;${KOLLA_BASE}&quot;), string(name: &apos;KOLLA_TYPE&apos;, value: &quot;${KOLLA_TYPE}&quot;), string(name: &apos;KOLLA_TAG&apos;, value: &quot;${KOLLA_TAG}&quot;), string(name: &apos;REPO_BASE&apos;, value: &quot;${REPO_BASE}&quot;), string(name: &apos;PROJECT_GIT_COMMIT&apos;, value: &quot;${PROJECT_GIT_COMMIT}&quot;), string(name: &apos;PROJECT_REFERENCE&apos;, value: &quot;${PROJECT_REFERENCE}&quot;), string(name: &apos;RELEASE&apos;, value: &quot;${RELEASE}&quot;), string(name: &apos;KOLLA_NAMESPACE&apos;, value: &quot;${KOLLA_NAMESPACE}&quot;), string(name: &apos;KOLLA_VERSION&apos;, value: &quot;${KOLLA_VERSION}&quot;), string(name: &apos;DOCKER_USER&apos;, value: &quot;${DOCKER_USER}&quot;), string(name: &apos;DOCKER_REGISTRY&apos;, value: &quot;${DOCKER_REGISTRY}&quot;), string(name: &apos;KOLLA_BUILD_IMAGE&apos;, value: &quot;${KOLLA_BUILD_IMAGE}&quot;), string(name: &apos;KOLLA_BUILD_IMAGE_VERSION&apos;, value: &quot;${KOLLA_BUILD_IMAGE_VERSION}&quot;), password(description: &apos;&apos;, name: &apos;DOCKER_PASS&apos;, value: &quot;${DOCKER_PASS}&quot;)]
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
