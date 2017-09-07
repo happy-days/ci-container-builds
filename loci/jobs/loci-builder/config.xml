@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.13">
+  <actions>
+    <io.jenkins.blueocean.service.embedded.BlueOceanUrlAction plugin="blueocean-rest-impl@1.1.7">
+      <blueOceanUrlObject class="io.jenkins.blueocean.service.embedded.BlueOceanUrlObjectImpl">
+        <mappedUrl>blue/organizations/jenkins/loci-build</mappedUrl>
+      </blueOceanUrlObject>
+    </io.jenkins.blueocean.service.embedded.BlueOceanUrlAction>
+  </actions>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty plugin="gitlab-plugin@1.4.7">
+      <gitLabConnection></gitLabConnection>
+    </com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>PROJECT</name>
+          <description>Project you wish to build an image for</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>Keystone</string>
+              <string>Heat</string>
+              <string>Glance</string>
+              <string>Neutron</string>
+              <string>Cinder</string>
+              <string>Nova</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>OPENSTACK_RELEASE</name>
+          <description>Release of Openstack to use to build the image.</description>
+          <defaultValue>newton</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DOCKER_NAMESPACE</name>
+          <description></description>
+          <defaultValue>quay.io/charter-os</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DOCKER_USERNAME</name>
+          <description>Username to log into docker with</description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>DOCKER_PASSWORD</name>
+          <description>Password to log into docker with</description>
+          <defaultValue>{AQAAABAAAAAQnxPWmgBgawVYQPWCY8lxI4AvjlB6a5dFKUpC/9a82K0=}</defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>DISTRO</name>
+          <description>Distribution of the image you wish to create.</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>ubuntu</string>
+              <string>debian</string>
+              <string>centos</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.36.1">
+    <script>stage(&quot;Launch ${PROJECT} Pipeline&quot;){
+    projectValue = &quot;os-loci-${PROJECT}&quot;
+    echo &quot;Building a ${projectValue} image for the Openstack Relase ${OPENSTACK_RELEASE} on ${DISTRO}&quot;
+    build job: projectValue, parameters: [string(name: &apos;OPENSTACK_RELEASE&apos;, value: &quot;${OPENSTACK_RELEASE}&quot;), string(name: &apos;DOCKER_NAMESPACE&apos;, value: &quot;${DOCKER_NAMESPACE}&quot;), string(name: &apos;DISTRO&apos;, value: &quot;${DISTRO}&quot;), string(name: &apos;DOCKER_USERNAME&apos;, value: &quot;${DOCKER_USERNAME}&quot;), password(description: &apos;&apos;, name: &apos;DOCKER_PASSWORD&apos;, value: &quot;${DOCKER_PASSWORD}&quot;)]
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
