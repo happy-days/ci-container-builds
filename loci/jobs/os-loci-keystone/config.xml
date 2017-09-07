@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.13">
+  <actions>
+    <io.jenkins.blueocean.service.embedded.BlueOceanUrlAction plugin="blueocean-rest-impl@1.1.7">
+      <blueOceanUrlObject class="io.jenkins.blueocean.service.embedded.BlueOceanUrlObjectImpl">
+        <mappedUrl>blue/organizations/jenkins/os-loci-us-keystone</mappedUrl>
+      </blueOceanUrlObject>
+    </io.jenkins.blueocean.service.embedded.BlueOceanUrlAction>
+  </actions>
+  <description>Pipeline to build keystone loci images</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty plugin="gitlab-plugin@1.4.7">
+      <gitLabConnection></gitLabConnection>
+    </com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>OPENSTACK_RELEASE</name>
+          <description></description>
+          <defaultValue>newton</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DOCKER_NAMESPACE</name>
+          <description></description>
+          <defaultValue>quay.io/charter-os</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>DISTRO</name>
+          <description></description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>ubuntu</string>
+              <string>debian</string>
+              <string>centos</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DOCKER_USERNAME</name>
+          <description></description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>DOCKER_PASSWORD</name>
+          <description></description>
+          <defaultValue>{AQAAABAAAAAQ+fN6SEeiJXh7z6wB2+BMHa9AfVW7j+7pel4ye639bso=}</defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.36.1">
+    <script>node(&apos;loci-osh&apos;){
+    stage(&apos;Login to Docker&apos;){
+        sh &quot;docker login -u=&apos;${DOCKER_USERNAME}&apos; -p=&apos;${DOCKER_PASSWORD}&apos; quay.io&quot;
+    }
+    stage(&apos;Environment Pre Check&apos;){
+        sh &apos;&apos;&apos;if [[ &quot;$(docker images -q ${DOCKER_NAMESPACE}/loci-keystone:${OPENSTACK_RELEASE}-${DISTRO} 2&gt; /dev/null)&quot; == &quot;&quot; ]]; then
+                docker exec loci-build docker rmi -f ${DOCKER_NAMESPACE}/loci-keystone:${OPENSTACK_RELEASE}-${DISTRO}
+              fi&apos;&apos;&apos;
+        sh &apos;&apos;&apos;if [[ &quot;$(docker images -q ${DOCKER_NAMESPACE}/loci-requirements:${OPENSTACK_RELEASE}-${DISTRO} 2&gt; /dev/null)&quot; == &quot;&quot; ]]; then
+                docker exec loci-build docker rmi -f ${DOCKER_NAMESPACE}/loci-requirements:${OPENSTACK_RELEASE}-${DISTRO}
+              fi&apos;&apos;&apos;
+        sh &apos;&apos;&apos;if [ &quot;$(docker ps -q -f name=loci-build)&quot; ]; then
+                docker rm -f loci-build || true
+              fi&apos;&apos;&apos;
+    }
+    stage(&apos;Set up loci build container&apos;){
+      sh &apos;&apos;&apos;docker run -d \
+        --privileged \
+        --name loci-build \
+        -v ${HOME}/.docker:/root/.docker:ro \
+        -v /var/lib/docker \
+        docker:17.07.0-dind \
+        --storage-driver=overlay&apos;&apos;&apos;
+      sh &quot;docker exec loci-build apk update&quot;
+      sh &quot;docker exec loci-build apk add -y git&quot;
+   }
+   stage(&apos;Import Loci Requirements&apos;){
+      sh &quot;docker exec loci-build docker pull ${DOCKER_NAMESPACE}/loci-requirements:${OPENSTACK_RELEASE}-${DISTRO}&quot;
+   }
+   stage(&apos;Build Loci Keystone Image&apos;) {
+      sh &apos;&apos;&apos;docker exec loci-build docker build \
+                https://github.com/openstack/loci-keystone.git#master:${DISTRO} \
+                --build-arg PROJECT_REF=stable/${OPENSTACK_RELEASE} \
+                --build-arg WHEELS=${DOCKER_NAMESPACE}/loci-requirements:${OPENSTACK_RELEASE}-${DISTRO} \
+                --tag ${DOCKER_NAMESPACE}/loci-keystone:${OPENSTACK_RELEASE}-${DISTRO}&apos;&apos;&apos;
+   }
+   stage(&apos;Push Loci Keystone Image&apos;){
+      sh &quot;docker exec loci-build docker push ${DOCKER_NAMESPACE}/loci-keystone:${OPENSTACK_RELEASE}-${DISTRO}&quot;
+   }
+   stage(&apos;Clean up&apos;){
+      sh &quot;docker exec loci-build docker rmi -f ${DOCKER_NAMESPACE}/loci-keystone:${OPENSTACK_RELEASE}-${DISTRO}&quot;
+      sh &quot;docker exec loci-build docker rmi -f ${DOCKER_NAMESPACE}/loci-requirements:${OPENSTACK_RELEASE}-${DISTRO}&quot;
+      sh &quot;docker rm -f loci-build || true&quot;
+   }
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
